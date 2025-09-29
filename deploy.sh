@@ -1,26 +1,25 @@
 #!/bin/bash
 
 # Env Vars
-TOI_POSTGRES_USER="user"
-POSTGRES_PASSWORD=$(openssl rand -base64 12)  # Generate a random 12-character password
-POSTGRES_DB="toi-db"
-POSTGRES_USER="toi-user"
-SECRET_KEY="toi-secret" # for the demo app
-NEXT_PUBLIC_SAFE_KEY="toi-key" # for the demo app
-DOMAIN_NAME="5.223.58.235" # replace with your own
-EMAIL="bernard.hex@gmail.com" # replace with your own
+TOI_POSTGRES_PASSWORD=$(openssl rand -base64 12)  # Generate a random 12-character password
+TOI_POSTGRES_DB="toi-db"
+TOI_POSTGRES_USER="toi-user"
+TOI_SECRET_KEY="toi-secret" # for the demo app
+NEXT_PUBLIC_TOI_SAFE_KEY="toi-key" # for the demo app
+TOI_DOMAIN_NAME="5.223.58.235" # replace with your own
+TOI_EMAIL="bernard.hex@gmail.com" # replace with your own
 
 # Script Vars
-REPO_URL="https://github.com/pybern/selfhost.git"
-APP_DIR=~/toiapp
-SWAP_SIZE="1G"  # Swap size of 1GB
+TOI_REPO_URL="https://github.com/pybern/selfhost.git"
+TOI_APP_DIR=~/toiapp
+TOI_SWAP_SIZE="1G"  # Swap size of 1GB
 
 # Update package list and upgrade existing packages
 sudo apt update && sudo apt upgrade -y
 
 # Add Swap Space
 echo "Adding swap space..."
-sudo fallocate -l $SWAP_SIZE /swapfile
+sudo fallocate -l $TOI_SWAP_SIZE /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
@@ -62,31 +61,31 @@ sudo systemctl enable docker
 sudo systemctl start docker
 
 # Clone the Git repository
-if [ -d "$APP_DIR" ]; then
-  echo "Directory $APP_DIR already exists. Pulling latest changes..."
-  cd $APP_DIR && git pull
+if [ -d "$TOI_APP_DIR" ]; then
+  echo "Directory $TOI_APP_DIR already exists. Pulling latest changes..."
+  cd $TOI_APP_DIR && git pull
 else
-  echo "Cloning repository from $REPO_URL..."
-  git clone $REPO_URL $APP_DIR
-  cd $APP_DIR
+  echo "Cloning repository from $TOI_REPO_URL..."
+  git clone $TOI_REPO_URL $TOI_APP_DIR
+  cd $TOI_APP_DIR
 fi
 
 # For Docker internal communication ("db" is the name of Postgres container)
-DATABASE_URL="postgres://$TOI_POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+TOI_DATABASE_URL="postgres://$TOI_POSTGRES_USER:$TOI_POSTGRES_PASSWORD@db:5432/$TOI_POSTGRES_DB"
 
 # For external tools (like Drizzle Studio)
-DATABASE_URL_EXTERNAL="postgres://$TOI_POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB"
+TOI_DATABASE_URL_EXTERNAL="postgres://$TOI_POSTGRES_USER:$TOI_POSTGRES_PASSWORD@localhost:5432/$TOI_POSTGRES_DB"
 
 # Create the .env file inside the app directory (~/toiapp/.env)
-echo "TOI_POSTGRES_USER=$TOI_POSTGRES_USER" > "$APP_DIR/.env"
-echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> "$APP_DIR/.env"
-echo "POSTGRES_DB=$POSTGRES_DB" >> "$APP_DIR/.env"
-echo "DATABASE_URL=$DATABASE_URL" >> "$APP_DIR/.env"
-echo "DATABASE_URL_EXTERNAL=$DATABASE_URL_EXTERNAL" >> "$APP_DIR/.env"
+echo "TOI_POSTGRES_USER=$TOI_POSTGRES_USER" > "$TOI_APP_DIR/.env"
+echo "TOI_POSTGRES_PASSWORD=$TOI_POSTGRES_PASSWORD" >> "$TOI_APP_DIR/.env"
+echo "TOI_POSTGRES_DB=$TOI_POSTGRES_DB" >> "$TOI_APP_DIR/.env"
+echo "TOI_DATABASE_URL=$TOI_DATABASE_URL" >> "$TOI_APP_DIR/.env"
+echo "TOI_DATABASE_URL_EXTERNAL=$TOI_DATABASE_URL_EXTERNAL" >> "$TOI_APP_DIR/.env"
 
 # These are just for the demo of env vars
-echo "SECRET_KEY=$SECRET_KEY" >> "$APP_DIR/.env"
-echo "NEXT_PUBLIC_SAFE_KEY=$NEXT_PUBLIC_SAFE_KEY" >> "$APP_DIR/.env"
+echo "TOI_SECRET_KEY=$TOI_SECRET_KEY" >> "$TOI_APP_DIR/.env"
+echo "NEXT_PUBLIC_TOI_SAFE_KEY=$NEXT_PUBLIC_TOI_SAFE_KEY" >> "$TOI_APP_DIR/.env"
 
 # Install Nginx
 sudo apt install nginx -y
@@ -101,7 +100,7 @@ sudo rm -f /etc/nginx/sites-enabled/toiapp
 
 # Obtain SSL certificate using Certbot standalone mode
 # sudo apt install certbot -y
-# sudo certbot certonly --standalone -d $DOMAIN_NAME --non-interactive --agree-tos -m $EMAIL
+# sudo certbot certonly --standalone -d $TOI_DOMAIN_NAME --non-interactive --agree-tos -m $TOI_EMAIL
 
 # # Ensure SSL files exist or generate them
 # if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
@@ -117,7 +116,7 @@ sudo cat > /etc/nginx/sites-available/toiapp <<EOL
 limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
 server {
     listen 80;
-    server_name $DOMAIN_NAME;
+    server_name $TOI_DOMAIN_NAME;
     # Enable rate limiting
     limit_req zone=mylimit burst=20 nodelay;
     location / {
@@ -141,7 +140,7 @@ sudo ln -s /etc/nginx/sites-available/toiapp /etc/nginx/sites-enabled/toiapp
 sudo systemctl restart nginx
 
 # Build and run the Docker containers from the app directory (~/toiapp)
-cd $APP_DIR
+cd $TOI_APP_DIR
 sudo docker-compose up --build -d
 
 # Check if Docker Compose started correctly
@@ -156,13 +155,13 @@ fi
 
 # Output final message
 echo "Deployment complete. Your Next.js app and PostgreSQL database are now running.
-Next.js is available at https://$DOMAIN_NAME, and the PostgreSQL database is accessible from the web service.
+Next.js is available at https://$TOI_DOMAIN_NAME, and the PostgreSQL database is accessible from the web service.
 
 The .env file has been created with the following values:
 - TOI_POSTGRES_USER
-- POSTGRES_PASSWORD (randomly generated)
-- POSTGRES_DB
-- DATABASE_URL
-- DATABASE_URL_EXTERNAL
-- SECRET_KEY
-- NEXT_PUBLIC_SAFE_KEY"
+- TOI_POSTGRES_PASSWORD (randomly generated)
+- TOI_POSTGRES_DB
+- TOI_DATABASE_URL
+- TOI_DATABASE_URL_EXTERNAL
+- TOI_SECRET_KEY
+- NEXT_PUBLIC_TOI_SAFE_KEY"
