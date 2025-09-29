@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # Env Vars
-POSTGRES_USER="myuser"
+POSTGRES_USER="user"
 POSTGRES_PASSWORD=$(openssl rand -base64 12)  # Generate a random 12-character password
-POSTGRES_DB="mydatabase"
-SECRET_KEY="my-secret" # for the demo app
-NEXT_PUBLIC_SAFE_KEY="safe-key" # for the demo app
-DOMAIN_NAME="nextselfhost.dev" # replace with your own
-EMAIL="your-email@example.com" # replace with your own
+POSTGRES_DB="toi-db"
+SECRET_KEY="toi-secret" # for the demo app
+NEXT_PUBLIC_SAFE_KEY="toi-key" # for the demo app
+DOMAIN_NAME="your-server-ip" # replace with your own
+EMAIL="bernard.hex@gmail.com" # replace with your own
 
 # Script Vars
-REPO_URL="https://github.com/leerob/next-self-host.git"
-APP_DIR=~/myapp
+REPO_URL="https://github.com/pybern/selfhost.git"
+APP_DIR=~/toiapp
 SWAP_SIZE="1G"  # Swap size of 1GB
 
 # Update package list and upgrade existing packages
@@ -76,7 +76,7 @@ DATABASE_URL="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
 # For external tools (like Drizzle Studio)
 DATABASE_URL_EXTERNAL="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB"
 
-# Create the .env file inside the app directory (~/myapp/.env)
+# Create the .env file inside the app directory (~/toiapp/.env)
 echo "POSTGRES_USER=$POSTGRES_USER" > "$APP_DIR/.env"
 echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> "$APP_DIR/.env"
 echo "POSTGRES_DB=$POSTGRES_DB" >> "$APP_DIR/.env"
@@ -91,27 +91,28 @@ echo "NEXT_PUBLIC_SAFE_KEY=$NEXT_PUBLIC_SAFE_KEY" >> "$APP_DIR/.env"
 sudo apt install nginx -y
 
 # Remove old Nginx config (if it exists)
-sudo rm -f /etc/nginx/sites-available/myapp
-sudo rm -f /etc/nginx/sites-enabled/myapp
+sudo rm -f /etc/nginx/sites-available/toiapp
+sudo rm -f /etc/nginx/sites-enabled/toiapp
 
+## SKIP STOPPING NGINX FOR CERTBOT
 # Stop Nginx temporarily to allow Certbot to run in standalone mode
-sudo systemctl stop nginx
+# sudo systemctl stop nginx
 
 # Obtain SSL certificate using Certbot standalone mode
-sudo apt install certbot -y
-sudo certbot certonly --standalone -d $DOMAIN_NAME --non-interactive --agree-tos -m $EMAIL
+# sudo apt install certbot -y
+# sudo certbot certonly --standalone -d $DOMAIN_NAME --non-interactive --agree-tos -m $EMAIL
 
-# Ensure SSL files exist or generate them
-if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
-  sudo wget https://raw.githubusercontent.com/certbot/certbot/refs/heads/main/certbot-nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf -P /etc/letsencrypt/
-fi
+# # Ensure SSL files exist or generate them
+# if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+#   sudo wget https://raw.githubusercontent.com/certbot/certbot/refs/heads/main/certbot-nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf -P /etc/letsencrypt/
+# fi
 
-if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
-  sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
-fi
+# if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
+#   sudo openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+# fi
 
 # Create Nginx config with reverse proxy, SSL support, rate limiting, and streaming support
-sudo cat > /etc/nginx/sites-available/myapp <<EOL
+sudo cat > /etc/nginx/sites-available/toiapp <<EOL
 limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
 
 server {
@@ -150,12 +151,12 @@ server {
 EOL
 
 # Create symbolic link if it doesn't already exist
-sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
+sudo ln -s /etc/nginx/sites-available/toiapp /etc/nginx/sites-enabled/toiapp
 
 # Restart Nginx to apply the new configuration
 sudo systemctl restart nginx
 
-# Build and run the Docker containers from the app directory (~/myapp)
+# Build and run the Docker containers from the app directory (~/toiapp)
 cd $APP_DIR
 sudo docker-compose up --build -d
 
@@ -165,8 +166,9 @@ if ! sudo docker-compose ps | grep "Up"; then
   exit 1
 fi
 
+## SKIP SSL RENEWAL
 # Setup automatic SSL certificate renewal...
-( crontab -l 2>/dev/null; echo "0 */12 * * * certbot renew --quiet && systemctl reload nginx" ) | crontab -
+# ( crontab -l 2>/dev/null; echo "0 */12 * * * certbot renew --quiet && systemctl reload nginx" ) | crontab -
 
 # Output final message
 echo "Deployment complete. Your Next.js app and PostgreSQL database are now running.
