@@ -4,6 +4,7 @@
 TOI_POSTGRES_USER="user"
 POSTGRES_PASSWORD=$(openssl rand -base64 12)  # Generate a random 12-character password
 POSTGRES_DB="toi-db"
+POSTGRES_USER="toi-user"
 SECRET_KEY="toi-secret" # for the demo app
 NEXT_PUBLIC_SAFE_KEY="toi-key" # for the demo app
 DOMAIN_NAME="5.223.58.235" # replace with your own
@@ -112,7 +113,7 @@ sudo rm -f /etc/nginx/sites-enabled/toiapp
 # fi
 
 # Create Nginx config with reverse proxy, SSL support, rate limiting, and streaming support
-sudo cat > /etc/nginx/sites-available/myapp <<EOL
+sudo cat > /etc/nginx/sites-available/toiapp <<EOL
 limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
 server {
     listen 80;
