@@ -1,21 +1,21 @@
 #!/bin/bash
 
 # Script Vars
-REPO_URL="https://github.com/leerob/next-self-host.git"
-APP_DIR=~/myapp
+TOI_REPO_URL="https://github.com/pybern/selfhost.git"
+TOI_APP_DIR=~/toiapp
 
 # Pull the latest changes from the Git repository
-if [ -d "$APP_DIR" ]; then
+if [ -d "$TOI_APP_DIR" ]; then
   echo "Pulling latest changes from the repository..."
-  cd $APP_DIR
+  cd $TOI_APP_DIR
   git pull origin main
 else
-  echo "Cloning repository from $REPO_URL..."
-  git clone $REPO_URL $APP_DIR
-  cd $APP_DIR
+  echo "Cloning repository from $TOI_REPO_URL..."
+  git clone $TOI_REPO_URL $TOI_APP_DIR
+  cd $TOI_APP_DIR
 fi
 
-# Build and restart the Docker containers from the app directory (~/myapp)
+# Build and restart the Docker containers from the app directory (~/toiapp)
 echo "Rebuilding and restarting Docker containers..."
 sudo docker-compose down
 sudo docker-compose up --build -d

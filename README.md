@@ -4,9 +4,9 @@ This repo shows how to deploy a Next.js app and a PostgreSQL database on a Ubunt
 
 ## Prerequisites
 
-1. Purchase a domain name
-2. Purchase a Linux Ubuntu server (e.g. [droplet](https://www.digitalocean.com/products/droplets))
-3. Create an `A` DNS record pointing to your server IPv4 address
+1. Purchase a domain name (optional - can use IP address)
+2. Purchase a Linux Ubuntu server (e.g. [DigitalOcean droplet](https://www.digitalocean.com/products/droplets))
+3. Create an `A` DNS record pointing to your server IPv4 address (if using domain)
 
 ## Quickstart
 
@@ -19,10 +19,10 @@ This repo shows how to deploy a Next.js app and a PostgreSQL database on a Ubunt
 2. **Download the deployment script**:
 
    ```bash
-   curl -o ~/deploy.sh https://raw.githubusercontent.com/leerob/next-self-host/main/deploy.sh
+   curl -o ~/deploy.sh https://raw.githubusercontent.com/pybern/selfhost/main/deploy.sh
    ```
 
-   You can then modify the email and domain name variables inside of the script to use your own.
+   You can then modify the email, domain name, and other variables inside of the script to use your own.
 
 3. **Run the deployment script**:
 
@@ -30,6 +30,46 @@ This repo shows how to deploy a Next.js app and a PostgreSQL database on a Ubunt
    chmod +x ~/deploy.sh
    ./deploy.sh
    ```
+
+## Development Workflow
+
+### Making Code Changes and Deploying
+
+1. **Make changes locally** to your Next.js application
+2. **Test locally** using Docker:
+   ```bash
+   docker-compose up -d
+   ```
+3. **Commit and push** your changes to your repository:
+   ```bash
+   git add .
+   git commit -m "Your commit message"
+   git push origin main
+   ```
+4. **Deploy updates to your VPS**:
+   ```bash
+   # SSH into your server
+   ssh root@your_server_ip
+   
+   # Run the update script
+   cd ~/toiapp
+   chmod +x update.sh
+   ./update.sh
+   ```
+
+### Environment Variables
+
+All environment variables use the `TOI_` prefix for consistency:
+
+- `TOI_POSTGRES_USER` - Database user
+- `TOI_POSTGRES_PASSWORD` - Database password (auto-generated)
+- `TOI_POSTGRES_DB` - Database name
+- `TOI_DATABASE_URL` - Internal database connection (for Docker containers)
+- `TOI_DATABASE_URL_EXTERNAL` - External database connection (for tools like Drizzle Studio)
+- `TOI_SECRET_KEY` - Application secret key
+- `NEXT_PUBLIC_TOI_SAFE_KEY` - Client-side environment variable
+- `TOI_DOMAIN_NAME` - Your domain/IP address
+- `TOI_EMAIL` - Your email address
 
 ## Supported Features
 
@@ -50,35 +90,57 @@ This demo tries to showcase many different Next.js features.
 I've included a Bash script which does the following:
 
 1. Installs all the necessary packages for your server
-1. Installs Docker, Docker Compose, and Nginx
-1. Clones this repository
-1. Generates an SSL certificate
-1. Builds your Next.js application from the Dockerfile
-1. Sets up Nginx and configures HTTPS and rate limting
-1. Sets up a cron which clears the database every 10m
-1. Creates a `.env` file with your Postgres database creds
+2. Installs Docker, Docker Compose, and Nginx
+3. Clones this repository to `~/toiapp`
+4. Generates environment variables with `TOI_` prefix
+5. Builds your Next.js application from the Dockerfile
+6. Sets up Nginx with reverse proxy, rate limiting, and streaming support
+7. Sets up a cron which clears the database every 10 minutes
+8. Creates a `.env` file with your Postgres database credentials
 
 Once the deployment completes, your Next.js app will be available at:
 
 ```
-http://your-provided-domain.com
+http://your-domain-or-ip
 ```
 
-Both the Next.js app and PostgreSQL database will be up and running in Docker containers. To set up your database, you could install `npm` inside your Postgres container and use the Drizzle scripts, or you can use `psql`:
+Both the Next.js app and PostgreSQL database will be up and running in Docker containers. The database is automatically initialized with the required schema through Drizzle migrations.
+
+## Database Setup
+
+The database is automatically set up during deployment. To manually access or manage the database:
 
 ```bash
-docker exec -it myapp-db-1 sh
-apk add --no-cache postgresql-client
-psql -U myuser -d mydatabase -c '
-CREATE TABLE IF NOT EXISTS "todos" (
-  "id" serial PRIMARY KEY NOT NULL,
-  "content" varchar(255) NOT NULL,
-  "completed" boolean DEFAULT false,
-  "created_at" timestamp DEFAULT now()
-);'
+# Enter the Postgres container
+docker exec -it toiapp-db-1 sh
+
+# Connect to the database
+psql -U toi-user -d toi-db
+
+# Or run SQL commands directly
+docker exec -it toiapp-db-1 psql -U toi-user -d toi-db -c "SELECT * FROM todos;"
 ```
 
-For pushing subsequent updates, I also provided an `update.sh` script as an example.
+For database management with Drizzle Studio:
+
+```bash
+cd ~/toiapp
+npm run db:studio
+```
+
+## Update Script
+
+For pushing subsequent updates after making code changes, use the included `update.sh` script:
+
+```bash
+cd ~/toiapp
+./update.sh
+```
+
+This script:
+1. Pulls the latest changes from your Git repository
+2. Rebuilds and restarts Docker containers
+3. Preserves your existing `.env` file and data
 
 ## Running Locally
 
@@ -98,14 +160,45 @@ bun run db:studio
 
 ## Helpful Commands
 
+### Docker Management
 - `docker-compose ps` – check status of Docker containers
 - `docker-compose logs web` – view Next.js output logs
+- `docker-compose logs db` – view PostgreSQL logs
 - `docker-compose logs cron` – view cron logs
 - `docker-compose down` - shut down the Docker containers
 - `docker-compose up -d` - start containers in the background
+- `docker-compose restart web` - restart just the web container
+
+### Container Access
+- `docker exec -it toiapp-web-1 sh` - enter Next.js Docker container
+- `docker exec -it toiapp-db-1 psql -U toi-user -d toi-db` - enter Postgres db
+
+### System Management
 - `sudo systemctl restart nginx` - restart nginx
-- `docker exec -it myapp-web-1 sh` - enter Next.js Docker container
-- `docker exec -it myapp-db-1 psql -U myuser -d mydatabase` - enter Postgres db
+- `sudo systemctl status nginx` - check nginx status
+- `journalctl -xeu nginx.service` - view nginx error logs
+
+### Database Management
+- `npm run db:studio` - open Drizzle Studio (from ~/toiapp)
+- `npm run db:generate` - generate new migrations
+- `npm run db:push` - push schema changes
+
+### Troubleshooting
+```bash
+# Check all container logs
+docker-compose logs
+
+# Check specific service health
+docker-compose ps
+
+# Test nginx configuration
+sudo nginx -t
+
+# Monitor system resources
+top
+df -h
+free -h
+```
 
 ## Other Resources
 
