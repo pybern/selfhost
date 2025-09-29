@@ -1,7 +1,7 @@
 'use client';
 
 export default function ProtectedPage() {
-  let safeKey = process.env.NEXT_PUBLIC_SAFE_KEY;
+  let safeKey = process.env.NEXT_PUBLIC_TOI_SAFE_KEY;
 
   return (
     <section>

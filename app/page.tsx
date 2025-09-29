@@ -15,7 +15,7 @@ async function getPokemon() {
 }
 
 export default async function Home() {
-  let secretKey = process.env.SECRET_KEY;
+  let secretKey = process.env.TOI_SECRET_KEY;
   let pokemon = await getPokemon();
 
   return (
