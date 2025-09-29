@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Env Vars
-POSTGRES_USER="user"
+TOI_POSTGRES_USER="user"
 POSTGRES_PASSWORD=$(openssl rand -base64 12)  # Generate a random 12-character password
 POSTGRES_DB="toi-db"
 SECRET_KEY="toi-secret" # for the demo app
 NEXT_PUBLIC_SAFE_KEY="toi-key" # for the demo app
-DOMAIN_NAME="your-server-ip" # replace with your own
+DOMAIN_NAME="5.223.58.235" # replace with your own
 EMAIL="bernard.hex@gmail.com" # replace with your own
 
 # Script Vars
@@ -71,13 +71,13 @@ else
 fi
 
 # For Docker internal communication ("db" is the name of Postgres container)
-DATABASE_URL="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
+DATABASE_URL="postgres://$TOI_POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB"
 
 # For external tools (like Drizzle Studio)
-DATABASE_URL_EXTERNAL="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB"
+DATABASE_URL_EXTERNAL="postgres://$TOI_POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB"
 
 # Create the .env file inside the app directory (~/toiapp/.env)
-echo "POSTGRES_USER=$POSTGRES_USER" > "$APP_DIR/.env"
+echo "TOI_POSTGRES_USER=$TOI_POSTGRES_USER" > "$APP_DIR/.env"
 echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> "$APP_DIR/.env"
 echo "POSTGRES_DB=$POSTGRES_DB" >> "$APP_DIR/.env"
 echo "DATABASE_URL=$DATABASE_URL" >> "$APP_DIR/.env"
@@ -112,29 +112,13 @@ sudo rm -f /etc/nginx/sites-enabled/toiapp
 # fi
 
 # Create Nginx config with reverse proxy, SSL support, rate limiting, and streaming support
-sudo cat > /etc/nginx/sites-available/toiapp <<EOL
+sudo cat > /etc/nginx/sites-available/myapp <<EOL
 limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
-
 server {
     listen 80;
     server_name $DOMAIN_NAME;
-
-    # Redirect all HTTP requests to HTTPS
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name $DOMAIN_NAME;
-
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
     # Enable rate limiting
     limit_req zone=mylimit burst=20 nodelay;
-
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -142,7 +126,6 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
-
         # Disable buffering for streaming support
         proxy_buffering off;
         proxy_set_header X-Accel-Buffering no;
@@ -175,7 +158,7 @@ echo "Deployment complete. Your Next.js app and PostgreSQL database are now runn
 Next.js is available at https://$DOMAIN_NAME, and the PostgreSQL database is accessible from the web service.
 
 The .env file has been created with the following values:
-- POSTGRES_USER
+- TOI_POSTGRES_USER
 - POSTGRES_PASSWORD (randomly generated)
 - POSTGRES_DB
 - DATABASE_URL
