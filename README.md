@@ -1,161 +1,407 @@
-# Next.js Self Hosting Example
+# Complete Deployment & Development Guide
 
-This repo shows how to deploy a Next.js app and a PostgreSQL database on a Ubuntu Linux server using Docker and Nginx. It showcases using several features of Next.js like caching, ISR, environment variables, and more.
+## Overview
 
-## Prerequisites
+This guide covers the complete workflow for developing, deploying, and updating your Next.js application on a VPS.
 
-1. Purchase a domain name (optional - can use IP address)
-2. Purchase a Linux Ubuntu server (e.g. [DigitalOcean droplet](https://www.digitalocean.com/products/droplets))
-3. Create an `A` DNS record pointing to your server IPv4 address (if using domain)
+## ⚠️ Required Configuration Changes
 
-## Quickstart
+Before running the deployment script, you **MUST** customize these configuration variables:
 
-1. **SSH into your server**:
+### In `deploy.sh` (lines 4-10):
 
-   ```bash
-   ssh root@your_server_ip
-   ```
+| Variable | Default Value | What to Change |
+|----------|---------------|----------------|
+| `TOI_DOMAIN_NAME` | `"5.223.58.235"` | **Replace with your server IP or domain name** |
+| `TOI_EMAIL` | `"bernard.hex@gmail.com"` | **Replace with your email address** |
+| `TOI_SECRET_KEY` | `"toi-secret"` | Change to a secure random string |
+| `NEXT_PUBLIC_TOI_SAFE_KEY` | `"toi-key"` | Change to your desired key |
+| `TOI_POSTGRES_PASSWORD` | Auto-generated | Leave as-is (automatically generates secure password) |
 
-2. **Download the deployment script**:
+### Optional Configuration:
 
-   ```bash
-   curl -o ~/deploy.sh https://raw.githubusercontent.com/pybern/selfhost/main/deploy.sh
-   ```
+| Variable | Default Value | Description |
+|----------|---------------|-------------|
+| `TOI_POSTGRES_DB` | `"toi-db"` | Database name |
+| `TOI_POSTGRES_USER` | `"toi-user"` | Database username |
+| `TOI_REPO_URL` | `"https://github.com/pybern/selfhost.git"` | Your Git repository URL |
+| `TOI_APP_DIR` | `~/toiapp` | Installation directory on server |
+| `TOI_SWAP_SIZE` | `"1G"` | Swap space size |
 
-   You can then modify the email, domain name, and other variables inside of the script to use your own.
+### Example Configuration:
 
-3. **Run the deployment script**:
+```bash
+# Before (default values - DO NOT USE AS-IS)
+TOI_DOMAIN_NAME="5.223.58.235"
+TOI_EMAIL="bernard.hex@gmail.com"
 
-   ```bash
-   chmod +x ~/deploy.sh
-   ./deploy.sh
-   ```
+# After (your custom values)
+TOI_DOMAIN_NAME="myapp.example.com"  # or "123.45.67.89" for IP
+TOI_EMAIL="you@yourdomain.com"
+```
+
+## Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Development   │───▶│   GitHub Repo    │───▶│   VPS Server    │
+│   Environment   │    │  pybern/selfhost │    │  Ubuntu Linux   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                       │
+                                              ┌─────────▼─────────┐
+                                              │     Nginx         │
+                                              │ Reverse Proxy     │
+                                              └─────────┬─────────┘
+                                                       │
+                                              ┌─────────▼─────────┐
+                                              │   Docker Compose  │
+                                              │                   │
+                                              │ ┌─────────────┐   │
+                                              │ │  Next.js    │   │
+                                              │ │ Container   │   │
+                                              │ │   :3000     │   │
+                                              │ └─────────────┘   │
+                                              │                   │
+                                              │ ┌─────────────┐   │
+                                              │ │ PostgreSQL  │   │
+                                              │ │ Container   │   │
+                                              │ │   :5432     │   │
+                                              │ └─────────────┘   │
+                                              │                   │
+                                              │ ┌─────────────┐   │
+                                              │ │ Cron Job    │   │
+                                              │ │ Container   │   │
+                                              │ └─────────────┘   │
+                                              └───────────────────┘
+```
+
+## Initial Setup Process
+
+### 1. Server Preparation
+
+```bash
+# SSH into your server
+ssh root@your_server_ip
+
+# Download deployment script
+curl -o ~/deploy.sh https://raw.githubusercontent.com/pybern/selfhost/main/deploy.sh
+
+# Make it executable
+chmod +x ~/deploy.sh
+
+# Edit the script to customize your environment variables
+nano ~/deploy.sh
+```
+
+### 2. Customize Configuration Variables
+
+**IMPORTANT**: Edit `deploy.sh` and change at minimum:
+- `TOI_DOMAIN_NAME` - Your domain or server IP
+- `TOI_EMAIL` - Your email address
+
+```bash
+nano ~/deploy.sh
+```
+
+### 3. Run Initial Deployment
+
+```bash
+./deploy.sh
+```
+
+This will:
+- Install Docker, Docker Compose, Nginx
+- Clone your repository to `~/toiapp`
+- Create `.env` file with database credentials
+- Build and start all containers
+- Configure Nginx reverse proxy
 
 ## Development Workflow
 
-### Making Code Changes and Deploying
-
-1. **Make changes locally** to your Next.js application
-2. **Test locally** using Docker:
-   ```bash
-   docker-compose up -d
-   ```
-3. **Commit and push** your changes to your repository:
-   ```bash
-   git add .
-   git commit -m "Your commit message"
-   git push origin main
-   ```
-4. **Deploy updates to your VPS**:
-   ```bash
-   # SSH into your server
-   ssh root@your_server_ip
-   
-   # Run the update script
-   cd ~/toiapp
-   chmod +x update.sh
-   ./update.sh
-   ```
-
-### Environment Variables
-
-All environment variables use the `TOI_` prefix for consistency:
-
-- `TOI_POSTGRES_USER` - Database user
-- `TOI_POSTGRES_PASSWORD` - Database password (auto-generated)
-- `TOI_POSTGRES_DB` - Database name
-- `TOI_DATABASE_URL` - Internal database connection (for Docker containers)
-- `TOI_DATABASE_URL_EXTERNAL` - External database connection (for tools like Drizzle Studio)
-- `TOI_SECRET_KEY` - Application secret key
-- `NEXT_PUBLIC_TOI_SAFE_KEY` - Client-side environment variable
-- `TOI_DOMAIN_NAME` - Your domain/IP address
-- `TOI_EMAIL` - Your email address
-
-## Supported Features
-
-This demo tries to showcase many different Next.js features.
-
-- Image Optimization
-- Streaming
-- Talking to a Postgres database
-- Caching
-- Incremental Static Regeneration
-- Reading environment variables
-- Using Middleware
-- Running code on server startup
-- A cron that hits a Route Handler
-
-## Deploy Script
-
-I've included a Bash script which does the following:
-
-1. Installs all the necessary packages for your server
-2. Installs Docker, Docker Compose, and Nginx
-3. Clones this repository to `~/toiapp`
-4. Generates environment variables with `TOI_` prefix
-5. Builds your Next.js application from the Dockerfile
-6. Sets up Nginx with reverse proxy, rate limiting, and streaming support
-7. Sets up a cron which clears the database every 10 minutes
-8. Creates a `.env` file with your Postgres database credentials
-
-Once the deployment completes, your Next.js app will be available at:
-
-```
-http://your-domain-or-ip
-```
-
-Both the Next.js app and PostgreSQL database will be up and running in Docker containers. The database is automatically initialized with the required schema through Drizzle migrations.
-
-## Database Setup
-
-The database is automatically set up during deployment. To manually access or manage the database:
+### 1. Local Development
 
 ```bash
-# Enter the Postgres container
-docker exec -it toiapp-db-1 sh
+# Clone your repository locally
+git clone https://github.com/pybern/selfhost.git
+cd selfhost
 
-# Connect to the database
-psql -U toi-user -d toi-db
+# Install dependencies
+npm install
 
-# Or run SQL commands directly
-docker exec -it toiapp-db-1 psql -U toi-user -d toi-db -c "SELECT * FROM todos;"
+# Run locally with Docker
+docker-compose up -d
+
+# Or run in development mode
+npm run dev
 ```
 
-For database management with Drizzle Studio:
+### 2. Testing Changes
 
 ```bash
+# Test with Docker (production-like environment)
+docker-compose up --build -d
+
+# Check logs
+docker-compose logs web
+
+# Access at http://localhost:3000
+```
+
+### 3. Deploying Updates
+
+```bash
+# Commit your changes
+git add .
+git commit -m "Add new feature"
+git push origin main
+
+# SSH into your server
+ssh root@your_server_ip
+
+# Navigate to app directory
 cd ~/toiapp
-npm run db:studio
-```
 
-## Update Script
-
-For pushing subsequent updates after making code changes, use the included `update.sh` script:
-
-```bash
-cd ~/toiapp
+# Run update script
 ./update.sh
 ```
 
-This script:
-1. Pulls the latest changes from your Git repository
-2. Rebuilds and restarts Docker containers
-3. Preserves your existing `.env` file and data
+## Environment Variables Reference
 
-## Running Locally
+### Server Environment Variables (set in deploy.sh)
 
-If you want to run this setup locally using Docker, you can follow these steps:
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `TOI_POSTGRES_USER` | Database username | `toi-user` |
+| `TOI_POSTGRES_PASSWORD` | Database password | `auto-generated` |
+| `TOI_POSTGRES_DB` | Database name | `toi-db` |
+| `TOI_SECRET_KEY` | App secret key | `toi-secret` |
+| `NEXT_PUBLIC_TOI_SAFE_KEY` | Client-side env var | `toi-key` |
+| `TOI_DOMAIN_NAME` | Your domain/IP | `example.com` |
+| `TOI_EMAIL` | Your email | `you@example.com` |
 
-```bash
-docker-compose up -d
+### Generated Environment Variables (in .env file)
+
+| Variable | Purpose |
+|----------|---------|
+| `TOI_DATABASE_URL` | Internal Docker connection |
+| `TOI_DATABASE_URL_EXTERNAL` | External tools connection |
+
+## File Structure on Server
+
+```
+~/toiapp/
+├── .env                    # Environment variables
+├── deploy.sh               # Initial deployment script
+├── update.sh              # Update deployment script
+├── docker-compose.yml     # Container orchestration
+├── Dockerfile             # Next.js container build
+├── package.json           # Dependencies
+├── next.config.ts         # Next.js configuration
+├── app/                   # Next.js application
+│   ├── db/               # Database related files
+│   │   ├── drizzle.ts    # Database connection
+│   │   ├── schema.ts     # Database schema
+│   │   └── migrations/   # Database migrations
+│   └── ...
+└── public/               # Static files
 ```
 
-This will start both services and make your Next.js app available at `http://localhost:3000` with the PostgreSQL database running in the background. We also create a network so that our two containers can communicate with each other.
+## Database Management
 
-If you want to view the contents of the local database, you can use Drizzle Studio:
+### Connecting to Database
 
 ```bash
-bun run db:studio
+# From server, enter database container
+docker exec -it toiapp-db-1 psql -U toi-user -d toi-db
+
+# Run SQL commands
+SELECT * FROM todos;
+
+# Exit
+\q
+```
+
+### Using Drizzle Studio
+
+```bash
+# From ~/toiapp directory
+npm run db:studio
+```
+
+Access at `http://your-server-ip:4983`
+
+### Schema Changes
+
+```bash
+# Generate migration after schema changes
+npm run db:generate
+
+# Apply migrations
+npm run db:push
+```
+
+## Monitoring and Troubleshooting
+
+### Container Status
+
+```bash
+cd ~/toiapp
+docker-compose ps
+```
+
+### View Logs
+
+```bash
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs web
+docker-compose logs db
+docker-compose logs cron
+```
+
+### System Health
+
+```bash
+# Check system resources
+free -h
+df -h
+top
+
+# Check nginx status
+sudo systemctl status nginx
+
+# Test nginx configuration
+sudo nginx -t
+```
+
+### Common Issues and Solutions
+
+#### 1. Environment Variable Errors
+
+**Error**: `The "POSTGRES_DB" variable is not set`
+**Solution**: Ensure `docker-compose.yml` uses `TOI_` prefixed variables
+
+#### 2. Build Failures
+
+**Error**: `npm run build failed`
+**Solution**: 
+- Check application code for errors
+- Verify all dependencies are installed
+- Check Next.js configuration
+
+#### 3. Database Connection Issues
+
+**Error**: Database connection refused
+**Solution**:
+- Ensure database container is running
+- Check `.env` file has correct database URL
+- Verify container networking
+
+#### 4. Nginx Errors
+
+**Error**: `nginx.service failed`
+**Solution**:
+- Check nginx configuration: `sudo nginx -t`
+- View logs: `journalctl -xeu nginx.service`
+- Restart nginx: `sudo systemctl restart nginx`
+
+## Performance Optimization
+
+### 1. Docker Image Size
+
+- Uses multi-stage builds
+- Standalone Next.js output reduces size by 80%
+
+### 2. Nginx Configuration
+
+- Rate limiting (10 requests/second)
+- Proxy buffering disabled for streaming
+- Gzip compression handled by Nginx
+
+### 3. Database
+
+- Persistent volumes for data
+- Automatic cleanup cron job (every 10 minutes for demo)
+
+## Security Considerations
+
+### 1. Environment Variables
+
+- All sensitive data in `.env` file
+- Database password auto-generated
+- No secrets in repository
+
+### 2. Network Security
+
+- Containers isolated in Docker network
+- Nginx rate limiting
+- SSL/TLS ready (commented out in current setup)
+
+### 3. Updates
+
+- Regular system updates via `apt update && apt upgrade`
+- Container isolation
+
+## SSL/HTTPS Setup (Optional)
+
+To enable SSL, uncomment the certbot sections in `deploy.sh`:
+
+```bash
+# Uncomment these lines in deploy.sh (lines 102-112)
+sudo apt install certbot -y
+sudo certbot certonly --standalone -d $TOI_DOMAIN_NAME --non-interactive --agree-tos -m $TOI_EMAIL
+```
+
+Then update the Nginx configuration to include SSL.
+
+## Backup Strategy
+
+### 1. Database Backup
+
+```bash
+# Create backup
+docker exec toiapp-db-1 pg_dump -U toi-user toi-db > backup.sql
+
+# Restore backup
+docker exec -i toiapp-db-1 psql -U toi-user toi-db < backup.sql
+```
+
+### 2. Environment Backup
+
+```bash
+# Backup .env file
+cp ~/toiapp/.env ~/toiapp-env-backup
+```
+
+### 3. Code Backup
+
+Your code is already backed up in your GitHub repository.
+
+## Scaling Considerations
+
+### Horizontal Scaling
+
+- Load balancer in front of multiple app instances
+- Separate database server
+- Redis for session storage/caching
+
+### Vertical Scaling
+
+- Increase server resources (CPU, RAM)
+- Optimize Docker resource limits
+- Database performance tuning
+
+## Clean Up
+
+If you need to completely remove the installation:
+
+```bash
+# Download and run cleanup script
+curl -o ~/cleanup.sh https://raw.githubusercontent.com/pybern/selfhost/main/cleanup.sh
+chmod +x ~/cleanup.sh
+./cleanup.sh
 ```
 
 ## Helpful Commands
@@ -183,26 +429,34 @@ bun run db:studio
 - `npm run db:generate` - generate new migrations
 - `npm run db:push` - push schema changes
 
-### Troubleshooting
-```bash
-# Check all container logs
-docker-compose logs
+## Supported Features
 
-# Check specific service health
-docker-compose ps
+This demo showcases many different Next.js features:
 
-# Test nginx configuration
-sudo nginx -t
+- Image Optimization
+- Streaming
+- Talking to a Postgres database
+- Caching
+- Incremental Static Regeneration
+- Reading environment variables
+- Using Middleware
+- Running code on server startup
+- A cron that hits a Route Handler
 
-# Monitor system resources
-top
-df -h
-free -h
-```
+## Support and Resources
 
-## Other Resources
-
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
 - [Kubernetes Example](https://github.com/ezeparziale/nextjs-k8s)
 - [Redis Cache Adapter for Next.js](https://github.com/vercel/next.js/tree/canary/examples/cache-handler-redis)
 - [ipx – Image optimization library](https://github.com/unjs/ipx)
 - [OrbStack - Fast Docker desktop client](https://orbstack.dev/)
+
+## Changelog
+
+- **v1.0**: Initial setup with TOI_ environment variables
+- **v1.1**: Added comprehensive deployment guide
+- **v1.2**: Updated for pybern/selfhost repository
+- **v1.3**: Consolidated documentation with configuration warnings
