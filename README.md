@@ -217,6 +217,11 @@ If any of these checks show conflicts, adjust the deployment configuration accor
 
 ## Architecture
 
+![Application Architecture](assets/achitecture.png)
+
+<details>
+<summary>Text Diagram (click to expand)</summary>
+
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Development   │───▶│   GitHub Repo    │───▶│   VPS Server    │
@@ -249,6 +254,8 @@ If any of these checks show conflicts, adjust the deployment configuration accor
                                               │ └─────────────┘   │
                                               └───────────────────┘
 ```
+
+</details>
 
 ## Initial Setup Process
 
