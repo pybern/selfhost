@@ -74,7 +74,7 @@ fi
 TOI_DATABASE_URL="postgres://$TOI_POSTGRES_USER:$TOI_POSTGRES_PASSWORD@db:5432/$TOI_POSTGRES_DB"
 
 # For external tools (like Drizzle Studio)
-TOI_DATABASE_URL_EXTERNAL="postgres://$TOI_POSTGRES_USER:$TOI_POSTGRES_PASSWORD@localhost:5432/$TOI_POSTGRES_DB"
+TOI_DATABASE_URL_EXTERNAL="postgres://$TOI_POSTGRES_USER:$TOI_POSTGRES_PASSWORD@localhost:5433/$TOI_POSTGRES_DB"
 
 # Create the .env file inside the app directory (~/toiapp/.env)
 echo "TOI_POSTGRES_USER=$TOI_POSTGRES_USER" > "$TOI_APP_DIR/.env"
@@ -120,7 +120,7 @@ server {
     # Enable rate limiting
     limit_req zone=toiapp_limit burst=20 nodelay;
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';

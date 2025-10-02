@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - '3000:3000'
+      - '3001:3000'
     environment:
       - NODE_ENV=production
     depends_on:
@@ -17,7 +17,7 @@ services:
       POSTGRES_PASSWORD: ${TOI_POSTGRES_PASSWORD}
       POSTGRES_DB: ${TOI_POSTGRES_DB}
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
