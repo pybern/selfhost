@@ -40,6 +40,181 @@ TOI_DOMAIN_NAME="myapp.example.com"  # or "123.45.67.89" for IP
 TOI_EMAIL="you@yourdomain.com"
 ```
 
+## 🚨 VPS-Level Configuration Considerations
+
+### ⚠️ Before Running This Script
+
+This deployment script makes system-level changes that **may conflict with existing applications** on your VPS. Review the following considerations carefully.
+
+### Port Usage & Conflicts
+
+The deployment uses these ports by default:
+
+| Port | Service | Potential Conflict |
+|------|---------|-------------------|
+| **80** | Nginx reverse proxy | 🔴 **HIGH RISK** - Will conflict with existing web servers |
+| **3000** | Next.js application | 🟡 Medium risk if another app uses this port |
+| **5432** | PostgreSQL database | 🟡 Medium risk if PostgreSQL already installed |
+
+#### Port 80 - Critical Consideration
+
+**If you use an IP address** as `TOI_DOMAIN_NAME`:
+- Nginx will capture **ALL HTTP traffic** on port 80
+- Any other websites on the same VPS will become inaccessible
+- **Recommendation**: Use a specific domain name instead
+
+**If you use a domain name** as `TOI_DOMAIN_NAME`:
+- Nginx will only capture traffic for that specific domain
+- Other domains/sites on the same VPS will continue to work
+- **This is the safest option for multi-app VPS**
+
+### Check for Conflicts Before Deploying
+
+Run these commands on your VPS to check for existing services:
+
+```bash
+# Check if ports are already in use
+sudo netstat -tulpn | grep :80
+sudo netstat -tulpn | grep :3000
+sudo netstat -tulpn | grep :5432
+
+# Check if Nginx is already installed
+nginx -v
+
+# Check if Docker is already installed
+docker --version
+
+# Check existing Nginx sites
+ls -la /etc/nginx/sites-enabled/
+
+# Check if PostgreSQL is running
+sudo systemctl status postgresql
+```
+
+### Multi-App VPS Deployment Options
+
+If you're running other applications on the same VPS, choose one of these approaches:
+
+#### Option 1: Use Domain-Based Routing (Recommended)
+
+```bash
+# In deploy.sh, use a domain instead of IP
+TOI_DOMAIN_NAME="myapp.example.com"  # Not "123.45.67.89"
+```
+
+This ensures Nginx only handles traffic for this specific domain, leaving other apps untouched.
+
+#### Option 2: Change Ports
+
+**Modify `docker-compose.yml`** to use different external ports:
+
+```yaml
+services:
+  web:
+    ports:
+      - '8080:3000'  # Change from 3000:3000
+  db:
+    ports:
+      - '5433:5432'  # Change from 5432:5432
+```
+
+**Modify `deploy.sh`** Nginx configuration (line 118):
+
+```bash
+server {
+    listen 8080;  # Change from 80 to any free port
+    server_name $TOI_DOMAIN_NAME;
+    location / {
+        proxy_pass http://localhost:3000;
+        # ... rest of config
+    }
+}
+```
+
+#### Option 3: Use Subdirectory Routing
+
+Serve the app from a subdirectory (e.g., `yourdomain.com/app`) instead of the root domain. Requires modifying the Nginx config:
+
+```nginx
+location /app/ {
+    proxy_pass http://localhost:3000/;
+    # ... rest of proxy settings
+}
+```
+
+### System-Level Changes Made by Script
+
+Be aware that the script makes these system-wide changes:
+
+| Change | Impact | Risk Level |
+|--------|--------|------------|
+| System package updates (`apt upgrade`) | Updates all packages | 🟢 Low - but may affect dependency versions |
+| Docker installation | Installs Docker CE | 🟢 Low - safe if not already installed |
+| Nginx installation | Installs Nginx | 🟡 Medium - safe, but restart affects all sites |
+| Swap file creation (`/swapfile`) | Creates 1GB swap | 🟢 Low - conflicts only if `/swapfile` exists |
+| Docker Compose installation | Installs Docker Compose v2.24.0 | 🟢 Low - standalone binary |
+| Nginx restart | Reloads all Nginx configs | 🟡 Medium - may expose issues in other configs |
+
+### Isolated Resources (No Conflicts)
+
+These resources are isolated and won't conflict with other apps:
+
+- ✅ Application directory: `~/toiapp/`
+- ✅ Environment file: `~/toiapp/.env`
+- ✅ Nginx site config: `/etc/nginx/sites-available/toiapp`
+- ✅ Docker volumes: `postgres_data` (unique to this app)
+- ✅ Docker network: `my_network` (can be renamed if needed)
+- ✅ Docker containers: Named `toiapp-web-1`, `toiapp-db-1`, `toiapp-cron-1`
+
+### Recommendations for Shared VPS
+
+1. **Use a specific domain name**, not an IP address
+2. **Check for port conflicts** before running the script
+3. **Test Nginx config** before restarting: `sudo nginx -t`
+4. **Back up existing Nginx configs** before deployment
+5. **Use unique Docker network names** if running multiple Docker apps
+6. **Monitor resource usage** after deployment (RAM, CPU, disk)
+7. **Consider using Docker resource limits** for production
+
+### Fresh VPS vs. Shared VPS
+
+| Scenario | Recommendation |
+|----------|----------------|
+| **Fresh VPS** (no existing apps) | Run script as-is after updating config variables |
+| **Shared VPS** (existing apps) | Review all sections above, use domain-based routing |
+| **Existing Nginx** | Test config with `sudo nginx -t` before deploying |
+| **Existing PostgreSQL** | Change PostgreSQL port in `docker-compose.yml` |
+| **Port 80 in use** | Use different port or domain-based routing |
+
+### Verifying Deployment Won't Break Existing Apps
+
+Before running `deploy.sh`:
+
+```bash
+# 1. Backup existing Nginx config
+sudo cp -r /etc/nginx /etc/nginx.backup
+
+# 2. Check what's using port 80
+sudo lsof -i :80
+
+# 3. List all Nginx sites
+ls -la /etc/nginx/sites-enabled/
+
+# 4. Check Docker networks (if Docker is installed)
+docker network ls
+
+# 5. Review running Docker containers
+docker ps -a
+
+# 6. Check available disk space
+df -h
+
+# 7. Check available RAM
+free -h
+```
+
+If any of these checks show conflicts, adjust the deployment configuration accordingly before proceeding.
+
 ## Architecture
 
 ```
