@@ -113,12 +113,12 @@ sudo rm -f /etc/nginx/sites-enabled/toiapp
 
 # Create Nginx config with reverse proxy, SSL support, rate limiting, and streaming support
 sudo cat > /etc/nginx/sites-available/toiapp <<EOL
-limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
+limit_req_zone \$binary_remote_addr zone=toiapp_limit:10m rate=10r/s;
 server {
-    listen 80;
+    listen 8080;
     server_name $TOI_DOMAIN_NAME;
     # Enable rate limiting
-    limit_req zone=mylimit burst=20 nodelay;
+    limit_req zone=toiapp_limit burst=20 nodelay;
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -155,7 +155,7 @@ fi
 
 # Output final message
 echo "Deployment complete. Your Next.js app and PostgreSQL database are now running.
-Next.js is available at https://$TOI_DOMAIN_NAME, and the PostgreSQL database is accessible from the web service.
+Next.js is available at http://$TOI_DOMAIN_NAME:8080, and the PostgreSQL database is accessible from the web service.
 
 The .env file has been created with the following values:
 - TOI_POSTGRES_USER
